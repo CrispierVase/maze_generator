@@ -3,8 +3,11 @@ use std::time;
 use image;
 use rand::prelude::*;
 
-const WIDTH: u32 = 51;
-const HEIGHT: u32 = 51;
+// the max value these can be is 1293, or at least for my machine
+// otherwise the stack overflows. 
+// They can be 2, but practically must be >= 3 to get any variation.  
+const WIDTH: u32 = 1293;
+const HEIGHT: u32 = 1293;
 
 #[derive(Clone, Copy, Debug, std::cmp::PartialEq)]
 struct Point {
@@ -27,7 +30,7 @@ fn main() {
         }
     }
     let stack: Vec<Point> = Vec::new();
-            generate_maze(visited, maze, stack);
+    generate_maze(visited, maze, stack);
 }
 
 fn image_from_maze(maze: &[[bool; WIDTH as usize]; HEIGHT as usize]) {
@@ -41,7 +44,7 @@ fn image_from_maze(maze: &[[bool; WIDTH as usize]; HEIGHT as usize]) {
             }
         }
     }
-    img.save("result.png").unwrap();
+    img.save(format!("{}x{}.png", WIDTH, HEIGHT)).unwrap();
 }
 
 fn get_in_between(old: Point, new: Point) -> Point {
@@ -86,7 +89,7 @@ fn find_neighbors(
         }
     }
     // right
-    if location.x + 2 <= WIDTH {
+    if location.x + 2 < WIDTH {
         if visited[location.x as usize + 2][location.y as usize] == false {
             neighbors.push(Point {
                 x: location.x + 2,
@@ -123,7 +126,7 @@ fn generate_maze(
     mut visited: [[bool; WIDTH as usize]; HEIGHT as usize],
     mut maze: [[bool; WIDTH as usize]; HEIGHT as usize],
     mut stack: Vec<Point>,
-) {
+) -> (Point, [[bool; WIDTH as usize]; HEIGHT as usize]) {
     let start_time = time::Instant::now();
 
     let mut start = Point {
@@ -150,9 +153,9 @@ fn generate_maze(
         while neighbors_result.1 == false {
             let stack_result = backtrack(stack);
             if stack_result.1 == false {
-                println!(" Maze Generation took {:?}", start_time.elapsed());
+                println!("Maze Generation took {:?}", start_time.elapsed());
                 image_from_maze(&maze);
-                return;
+                return (start, maze);
             } else {
                 stack = stack_result.0;
             }
@@ -173,64 +176,5 @@ fn generate_maze(
         maze[WIDTH as usize - 1][HEIGHT as usize - 1] = true;
     }
     image_from_maze(&maze);
+    return (start, maze);
 }
-
-fn solve_maze(maze: [[bool; WIDTH as usize]; HEIGHT as usize]) {
-    let start_time = time::Instant::now();
-    let mut stack: Vec<Point> = Vec::new();
-    let mut distances: [[u32; WIDTH as usize]; HEIGHT as usize] = [[0; WIDTH as usize]; HEIGHT as usize];   
-    let mut start = Point{x: 0, y: 0};
-
-    let mut visited = [[true; WIDTH as usize]; HEIGHT as usize];
-    let tmp_visited = visited.clone();
-    for (idx, row) in tmp_visited.iter().enumerate() {
-        for (idx1, _col) in row.iter().enumerate() {
-            if idx % 2 == 1 && idx1 % 2 == 1 {
-                visited[idx][idx1] = true;
-            } else {
-                visited[idx][idx1] = false;
-            }
-        }
-    }
-
-    for (idx, row) in maze.iter().enumerate() {
-        if idx > 0 {
-            break
-        }
-        for (idx1, col) in row.iter().enumerate() {
-            if *col == true {
-                start.x = idx1 as u32;
-            }
-        }
-    }
-    stack.push(start);
-    let mut current = start.clone();
-    // set distances
-    while stack.len() >= 1 {
-        let mut neighbors_result = find_neighbors(&visited, &current);
-
-        while neighbors_result.1 == false {
-            let stack_result = backtrack(stack);
-            if stack_result.1 == false {
-                println!(" Maze Generation took {:?}", start_time.elapsed());
-                image_from_maze(&maze);
-                return;
-            } else {
-                stack = stack_result.0;
-            }
-            current = stack[stack.len() - 1];
-            neighbors_result = find_neighbors(&visited, &current);
-        }
-        let neighbors = neighbors_result.0;
-
-        let old = current.clone();
-        if !stack.contains(&current) {
-            stack.push(current);
-        }
-        let old = current.clone();
-        current = neighbors[pick_random_int(neighbors.len() as u32) as usize];
-        distances[current.x as usize][current.y as usize] = distances[old.x as usize][old.y as usize] + 1;
-        
-    }
-
-}   
